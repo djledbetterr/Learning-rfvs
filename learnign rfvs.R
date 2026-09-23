@@ -93,3 +93,28 @@ output <- fvsInteractRun(AfterEM1 = "fetchTrees(c(2020,2070))", SimEnd = fvsGetS
 
 str(output)
 
+# working with the LRLR2026 Data ----
+# Code to test this out on my end 
+# So I uploaded my data set for LRLR26 into FVS and then it output the .db to my C drive in the FVS folder 
+
+
+# after doing these steps I want to confirm it is the right one on my end
+
+install.packages("RSQLite", repos = "https://cloud.r-project.org")
+library(RSQLite)
+ls("package:RSQLite")
+?dbConnect
+
+con <- dbConnect(SQLite(), "C:/FVS/LRLRD26 9-23-2026/FVS_Data.db")
+
+dbListTables(con)
+dbGetQuery(con, "SELECT COUNT(*) FROM FVS_TreeInit")
+dbDisconnect(con)
+
+devtools::install("C:/Users/djledbet/ForestVegetationSimulator-Interface/fvsOL")
+
+library(fvsOL)
+ls("package:fvsOL")
+
+args(fvsOL)
+fvsOL(prjDir = "C:/FVS/LRLRD26 9-23-2026", fvsBin = "C:/FVS/FVSSoftware/FVSbin")
