@@ -3,7 +3,7 @@
 
 rm(list = ls())
 
-# lets start  with installing this 
+# lets start with installing this 
 
 # Installing ----
 # okay so i had to look up steps on how to install this and this was the one this was found in the terminal so I can just install it since it is on my
