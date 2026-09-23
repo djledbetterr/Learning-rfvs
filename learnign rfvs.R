@@ -275,11 +275,12 @@ END
 SPLabel
   All_FIA_Plots, &
   All_Stands
+NoTriple
 Process
 
 Stop
 ",
-    stand_id, stand_id, stand_cn, t1_year, time_step, extra_timeint, num_cycle,
+    stand_id, stand_id, stand_cn, t1_year, time_step, extra_timeint, num_cycle + 1,
     out_db, db_in
   )
   
@@ -498,5 +499,123 @@ dbDisconnect(con)
 
 names(ti)
 nrow(ti)                                        # should be 52
-head(ti[, c("Tree_ID", "Species", "DBH", "Height")], 10)
-head(out[[1]]$AfterEM1$trees[, c("id", "dbh", "ht")], 10)
+head(ti[, c("TREE_ID", "TREE_CN", "PLOT_ID", "SPECIES", "DIAMETER", "HT", "CRRATIO", "TREE_COUNT")], 10)
+head(out[[1]]$AfterEM1$trees[, c("id", "species", "dbh", "ht", "cratio", "tpa")], 10)
+
+ti$id <- seq_len(nrow(ti))          # position = FVS record id, if the check confirms it
+
+t13 <- out[["11410300001:A001:2013"]]$AfterEM1$trees
+
+# all 52 rows, not just the first 10
+all(ti$DIAMETER == t13$dbh)
+all(ti$HT == t13$ht)
+anyDuplicated(ti$TREE_CN)      # want 0
+anyDuplicated(ti$TREE_ID)      # if > 0, TREE_ID repeats across subplots; use TREE_CN
+
+d <- ti$DIAMETER - t13$dbh
+summary(abs(d))                       # tiny (~1e-6) = precision only
+which(abs(d) > 0.01)                  # rows with a real difference
+
+# look at any rows that differ
+bad <- which(abs(d) > 0.01)
+data.frame(row = bad,
+           TREE_CN  = ti$TREE_CN[bad],
+           db_dbh   = ti$DIAMETER[bad],
+           fvs_dbh  = t13$dbh[bad],
+           db_ht    = ti$HT[bad],
+           fvs_ht   = t13$ht[bad])
+
+library(rFVS)
+setwd("C:/FVS/LRLRD26 9-23-2026")
+fvsLoad("FVSsn", bin = "C:/FVS/FVSSoftware/FVSbin")
+
+test_ids <- c("10503300064", "11209300064", "11410300001", "220902700025")
+expected_t2 <- c(2006, 2017, 2020, 2022)
+
+for (j in seq_along(test_ids)) {
+  fvsSetCmdLine(paste0("--keywordfile=keyfiles/", test_ids[j], ".key"))
+  o <- fvsInteractRun(AfterEM1 = "list(year = fvsGetEventMonitorVariables('year'),
+       trees = fvsGetTreeAttrs(c('id','dbh','ht','cratio','tpa')))")
+  yrs <- as.integer(sub(".*:", "", names(o)))
+  cat(test_ids[j], "| years:", yrs, "| expected t2:", expected_t2[j],
+      "| t2 captured:", expected_t2[j] %in% yrs,
+      "| rows:", sapply(o, function(x) nrow(x$AfterEM1$trees)), "\n")
+}
+
+# The point of this code below is to run FVS on every stand and collect two snapshots per stand:
+# what FVS says the trees look like at t1 (your input) and what it predicts at t2. 
+# Each snapshot is labeled with the real tree key, so you can later match predicted trees to your observed t2 trees.
+
+library(dplyr)
+library(RSQLite)
+
+con <- dbConnect(SQLite(), "FVS_Data.db")
+
+capture <- "list(year = fvsGetEventMonitorVariables('year'),
+  trees = fvsGetTreeAttrs(c('id','dbh','ht','cratio','tpa')))"
+
+run_stands <- function(sy) {
+  results <- list(); failed <- character()
+  for (k in seq_len(nrow(sy))) {
+    sid <- format(sy$STAND_ID[k], scientific = FALSE, trim = TRUE)
+    t1 <- sy$t1_year[k]; t2 <- sy$t2_year[k]
+    
+    res <- tryCatch({
+      # same query FVS uses, so row order matches FVS's record ids
+      ti <- dbGetQuery(con, sprintf(
+        "SELECT TREE_CN, TREE_ID, PLOT_ID, SPECIES, DIAMETER, HT, HISTORY
+   FROM FVS_TreeInit WHERE Stand_ID = '%s' AND HISTORY IN (0, 1)", sid))
+      ti$id <- seq_len(nrow(ti))
+      
+      fvsSetCmdLine(paste0("--keywordfile=keyfiles/", sid, ".key"))
+      o <- fvsInteractRun(AfterEM1 = capture)
+      yrs <- as.integer(sub(".*:", "", names(o)))
+      stopifnot(t1 %in% yrs, t2 %in% yrs)
+      
+      # safety check: FVS's t1 records must match the database rows
+      tr1 <- o[[which(yrs == t1)]]$AfterEM1$trees
+      stopifnot(nrow(tr1) == nrow(ti),
+                max(abs(ti$DIAMETER - tr1$dbh)) < 0.01,
+                max(abs(ti$HT - tr1$ht)) < 0.01)
+      
+      bind_rows(lapply(c(t1, t2), function(y) {
+        tr <- o[[which(yrs == y)]]$AfterEM1$trees
+        cbind(STAND_ID = sid, year = y, when = ifelse(y == t1, "t1", "t2"),
+              tr, ti[match(tr$id, ti$id), c("TREE_CN", "TREE_ID", "PLOT_ID", "SPECIES")])
+      }))
+    }, error = function(e) {
+      failed <<- c(failed, paste(sid, "-", conditionMessage(e))); NULL })
+    
+    results[[sid]] <- res
+    if (k %% 100 == 0) saveRDS(results, "t2_predictions_partial.rds")
+  }
+  list(pred = bind_rows(results), failed = failed)
+}
+
+test <- run_stands(stand_years[1:10, ])
+nrow(test$pred); test$failed
+table(test$pred$STAND_ID, test$pred$when)
+head(test$pred)
+
+
+sid <- "11710700035"
+ti <- dbGetQuery(con, sprintf("SELECT * FROM FVS_TreeInit WHERE Stand_ID = '%s'", sid))
+nrow(ti)
+
+fvsSetCmdLine(paste0("--keywordfile=keyfiles/", sid, ".key"))
+o <- fvsInteractRun(AfterEM1 = capture)
+names(o)
+sapply(o, function(x) nrow(x$AfterEM1$trees))
+
+table(ti$HISTORY, useNA = "ifany")     # tree status codes
+summary(ti$DIAMETER)
+table(ti$SPECIES)
+
+system.time(
+  full <- run_stands(stand_years)
+)
+saveRDS(full, "t2_predictions.rds")
+
+length(full$failed)
+head(full$failed, 20)
+n_distinct(full$pred$STAND_ID)     # 703 minus any failures
