@@ -1,0 +1,22 @@
+
+Attaching package: 'dplyr'
+
+The following objects are masked from 'package:stats':
+
+    filter, lag
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+stands: 703 
+failed: 0 
+
+   t1    t2 
+36242 36242 
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+0.01066 0.71339 1.15661 1.36314 1.76122 7.98430 
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  0.020   5.727   8.293   8.546  10.938  29.601 
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.1607  0.8314  0.9277  0.8807  0.9776  1.0000 
