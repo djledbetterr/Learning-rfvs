@@ -1,0 +1,35 @@
+run date: 2026-09-24 15:46:38
+FVSsn dll md5: b660df1e0e9aecb82c518bbb91c8f8da
+FVS_Data.db md5: 21102e777abd06568e34457e11511a9a
+rFVS version: 2024.7.1
+
+R version 4.6.0 (2026-04-24 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26100)
+
+Matrix products: default
+  LAPACK version 3.12.1
+
+locale:
+[1] LC_COLLATE=English_United States.utf8 
+[2] LC_CTYPE=English_United States.utf8   
+[3] LC_MONETARY=English_United States.utf8
+[4] LC_NUMERIC=C                          
+[5] LC_TIME=English_United States.utf8    
+
+time zone: America/New_York
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] RSQLite_3.53.3  dplyr_1.2.1     rFVS_2024.07.01
+
+loaded via a namespace (and not attached):
+ [1] R6_2.6.1          fastmap_1.2.0     bit_4.6.0         tidyselect_1.2.1 
+ [5] magrittr_2.0.5    cachem_1.1.0      glue_1.8.1        blob_1.3.0       
+ [9] tibble_3.3.1      memoise_2.0.1     pkgconfig_2.0.3   bit64_4.8.2      
+[13] generics_0.1.4    lifecycle_1.0.5   cli_3.6.6         vctrs_0.7.3      
+[17] DBI_1.3.0         compiler_4.6.0    tools_4.6.0       rstudioapi_0.19.0
+[21] pillar_1.11.1     otel_0.2.0        rlang_1.2.0      
